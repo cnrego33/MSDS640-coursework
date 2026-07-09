@@ -13,7 +13,7 @@
 # lubridate - used for dates and times 
 
 #==========================================================
-# Load in packages 
+# Load in packages  
 
 library (auk)
 library(tidyverse)
@@ -35,25 +35,14 @@ ebd_file <- file.path(project_root,
                       "ebd_US_semsan_smp_relMay-2026",
                       "ebd_US_semsan_smp_relMay-2026.txt")
 
-# sampling file (one row per checklist, used to generate psuedo-absences)
-sampling_file <- file.path(project_root, 
-                           "ebd_US_semsan_smp_relMay-2026",
-                           "ebd_US_semsan_smp_relMay-2026_sampling.txt")
 
-# output filtered files (auk writes these before reading into R)
+# output filtered file (auk writes this before reading into R)
 ebd_filtered <- file.path(project_root, "data", "ebd_SESA_filtered.txt")
-sampling_filtered <- file.path(project_root, "data", "ebd_sampling_filtered.txt")
 
 
 # create data output folder
 dir.create(file.path(project_root, "data"), showWarnings = FALSE)
 
-# confirm the input files I created do in fact exist 
-stopifnot(
-  "EBD file not found - check your file path" = file.exists(ebd_file),
-  "Sampling file not found - check your file path" = file.exists(sampling_file)
-)
-message("Input files found. Starting auk filtering...")
 
 #==========================================================
 # 2. AWK Filtering 
@@ -64,7 +53,7 @@ auk_set_awk_path("C:/rtools45/usr/bin/awk.exe", overwrite = TRUE)
 
 if (!file.exists(ebd_filtered)) {
   
-  auk_ebd(ebd_file, file_sampling = sampling_file) |>
+  auk_ebd(ebd_file) |>
     
     # States: VA to ME 
     auk_state(c("US-VA", "US-MD", "US-DE", "US-NJ", "US-NY", "US-CT", "US-RI", "US-MA", "US-NH", "US-ME")) |>
@@ -74,15 +63,12 @@ if (!file.exists(ebd_filtered)) {
     
     
     # Run filter, write output files 
-    auk_filter(
-      file = ebd_filtered, 
-      file_sampling = sampling_filtered, 
-      overwrite = TRUE
-    )
+    auk_filter(file = ebd_filtered,  overwrite = TRUE)
+  
   message("Filtering complete.")
     
 } else {
-  message("Filtered files already exist - skipping AWK filtering step. Delete data/ebd_SESA_filtered.txt to re-run.")
+  message("Filtered files already exist - skipping AWK filtering step.")
 }
 
 
@@ -149,6 +135,7 @@ ebd_clean <- ebd |>
   )
 
 
+
 message(paste("Rows after season filtering:", nrow(ebd_clean)))
 message(paste("Year range:", min(ebd_clean$year), "to", max(ebd_clean$year)))
 
@@ -175,6 +162,7 @@ print(state_summary)
 
 # By year 
 year_summary <- ebd_clean |> count(year) |> arrange(year)
+
 print(year_summary)
 
 # By season 
@@ -284,10 +272,6 @@ ggplot(migration_month_detections, aes(x=month, y=n)) +
   
 #==========================================================
 # 7. Initial plot
-# install.packages("rnaturalearth")
-# install.packages("rnaturalearthdata")
-# install.packages("pak")
-# install.packages("rnaturalearthhires", repos = "https://ropensci.r-universe.dev")
 coast <- ne_states(country = "united states of america", returnclass="sf") |>
   filter(postal %in% c("VA", "MD", "DE", "NJ", "NY", "CT", "RI", "MA", "NH", "ME"))
 
@@ -309,6 +293,7 @@ ggsave(file.path(project_root, "data", "1_SESA_Detections_Map.png"),
        width = 8, height = 10, dpi = 300)
 
 
+
 #==========================================================
 # 8. Save Cleaned Data 
 saveRDS(ebd_clean, file.path(project_root, "data", "ebd_clean.rds"))
@@ -325,4 +310,10 @@ glimpse(obj)
 dim(obj)
 colnames(obj)
 
+# Missing values
 colSums(is.na(ebd_clean))
+
+  # missing values are not in columns that will effect my models. 
+  # missing values in columns - effort_distance_km, number_observers, and observation_count_clean, duration_minutes 
+  # therefore nothing needs to be done with missing values here 
+
