@@ -28,3 +28,20 @@ dbListTables(con)
 dbGetQuery(con, "SELECT COUNT(*) FROM ebd_occurences")
 
 dbDisconnect(con)
+
+
+#===============================================================================
+# Load Hotspot Data into SESA Project database 
+#===============================================================================
+dbWriteTable(con, "hotspot_sites", as.data.frame(hotspot_sites), overwrite = TRUE)
+dbGetQuery(con, "SELECT COUNT(*) FROM hotspot_sites")[[1]]
+dbDisconnect(con)
+
+
+
+#===============================================================================
+# Load Habitat Data into SESA Project database 
+#===============================================================================
+dbWriteTable(con, "habitat_extracted", habitat_table, overwrite = TRUE)
+dbGetQuery(con, "SELECT COUNT(*) FROM habitat_extracted")[[1]]
+dbDisconnect(con)

@@ -313,3 +313,16 @@ ggsave(file.path(project_root, "data", "1_SESA_Detections_Map.png"),
 # 8. Save Cleaned Data 
 saveRDS(ebd_clean, file.path(project_root, "data", "ebd_clean.rds"))
 saveRDS(ebd_sf, file.path(project_root, "data", "ebd_sf.rds"))
+
+obj <- readRDS(file.path(project_root, "data", "ebd_clean.rds"))
+class(obj) 
+
+#==============================================================================
+# Summary statistics 
+str(obj)
+summary(obj)
+glimpse(obj)
+dim(obj)
+colnames(obj)
+
+colSums(is.na(ebd_clean))
