@@ -92,3 +92,36 @@ message(paste("Rows in habitat table:", nrow(habitat_table)))
 saveRDS(habitat_table, file.path(project_root, "data", "habitat_table.rds"))
 
 
+#=======================================================================
+# 6. Psuedo-absence site habitat information 
+
+# load int eh pseudo absences 
+pseudo_abs <- readRDS(file.path(project_root, "data", "pseudo_abs.rds"))
+pseudo_vector <- vect(pseudo_abs)
+
+# project coordinates again 
+pseudo_nlcd <- project(pseudo_vector, crs(nlcd_2001))
+
+# extract these new values again 
+nlcd_pseudo_2001 <- extract(nlcd_2001, pseudo_nlcd)
+nlcd_pseudo_2025 <- extract(nlcd_2025, pseudo_nlcd)
+
+# extract SLR values at these pseudo sites 
+slr_pseudo_05 <- extract_from_tiles(slr_05_files, pseudo_vector)
+slr_pseudo_10 <- extract_from_tiles(slr_10_files, pseudo_vector)
+
+# create a feature table 
+pseudo_nlcd_features <- data.frame(
+  locality_id = NA, 
+  n_detections = NA, 
+  n_years = NA, 
+  nlcd_2001 = nlcd_pseudo_2001[[2]],
+  nlcd_2025 = nlcd_pseudo_2025[[2]],
+  slr_05m = slr_pseudo_05, 
+  slr_10m = slr_pseudo_10, 
+  presence = 0L
+)
+head(pseudo_nlcd_features)
+
+# save extracted pseudo features
+saveRDS(pseudo_nlcd_features, file.path(project_root, "data", "pseudo_nlcd_features.rds"))
