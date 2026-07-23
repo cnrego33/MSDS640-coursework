@@ -118,6 +118,9 @@ recall <- conf_matrix[2,2] / sum(conf_matrix[,2]) # tp / (tp + fn)
 # balances precision and recall 
 f1 <- 2 * (precision * recall) / (precision + recall) # 2*(prec * rec) / (prec + rec)                    
 
+# auto calculations for evaluation metrics
+confusionMatrix(as.factor(lr_pred), as.factor(test$presence), positive = "1")
+
 message(paste("Precision:", round(precision, 3)))
 
 message(paste("Recall:", round(recall, 3)))
