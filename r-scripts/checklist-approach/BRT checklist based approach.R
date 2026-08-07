@@ -59,6 +59,18 @@ nrow(test)
 
 
 #=======================================================================
+# untuned brt model 
+brt_untuned <- gbm(presence ~ ., 
+                 data = train, 
+                 distribution = "bernoulli", #binary classification 
+                 cv.folds = 5,               # 5-fold cv
+                 verbose = FALSE)
+
+best_untuned <- gbm.perf(brt_untuned, method = "cv", plot.it = FALSE)
+untuned_probs <-predict(brt_untuned, newdata = test, n.trees = best_untuned, type = "response") #run model on test data and return probabilities 0-1
+untuned_auc <- as.numeric(auc(roc(test$presence, untuned_probs)))
+untuned_auc
+#=======================================================================
 # fit brt model 
 
 set.seed(42)
@@ -124,3 +136,78 @@ print(cv_brt$results)
 
 #save model 
 saveRDS(brt_model, file.path(project_root, "data", "BRT_checklist_model.rds"))
+
+
+#========================================================================
+#9. Error Analysis
+   
+   # add 3 new columns to test set - predicted, probability, correct
+   test_results <- test |> 
+     mutate(predicted = brt_pred,
+                       probability = brt_probs,
+                       correct = ifelse(predicted == presence, "Correct", "Incorrect"))
+
+   # rows that the model was incorrect predicting 
+   misclassified <- test_results |> filter(correct == "Incorrect")
+ message(paste("Total misclassified:", nrow(misclassified)))
+
+ 
+   # false negatives - shows where model predicted absent and there was presence ( a hotspot)
+   false_negatives <- test_results |> 
+     filter(predicted == 0 & presence == 1)
+ message(paste("False Negatives (missed hotspots):", nrow(false_negatives)))
+
+ 
+   # false positives - falsely reported as hotspots when they are not 
+   false_positives <- test_results |> 
+     filter(predicted == 1 & presence == 0)
+ message(paste("False Positives (labeled hotspots falsely):", nrow(false_positives)))
+
+
+   #========================================================================
+    #10. Learning Curves
+      
+      # create seq of proportions from 10% to 90% - the training subset sizes
+      train_sizes <- seq(0.1, 0.9, by = 0.1)
+    
+      # empty vectors to store auc scores 
+      train_auc <- c()
+    val_auc <- c()
+    
+      set.seed(42)
+    
+      for (size in train_sizes) {
+          idx <- sample(1:nrow(train), size = floor(size * nrow(train))) #randomly selects the set amount of training data
+          train_subset <- train[idx, ] # based on the rows selected create a smaller traiing data set
+          
+            #fits temporary model on the subset
+            model_temp <- gbm(presence ~ ., 
+                              data = train_subset, 
+                              distribution = "bernoulli", #binary classification 
+                              n.trees = 1000,             #max number of trees to build
+                              interaction.depth = 3,      #how deep each tree can grow, complexity
+                              shrinkage = 0.01,           #learning rate, smaller = more accurate but more conservative
+                              cv.folds = 5,               # 5-fold cv
+                              verbose = FALSE)
+            
+              # gets pred on training subset and full test set 
+              train_probs <- predict(model_temp, newdata = train_subset, type = "response")
+              val_probs <- predict(model_temp, newdata = test, type = "response")
+              
+                # calculates auc for particular subset and adds it to the list to build the full curve 
+                train_auc <- c(train_auc, as.numeric(auc(roc(train_subset$presence, train_probs))))
+                val_auc <- c(val_auc, as.numeric(auc(roc(test$presence, val_probs))))
+      }
+      
+      # how performance changes with increased amount of training 
+       # red is train blue is val
+         # not overfitting because not large gap between train and val 
+         # not underfitting because not doing poorly
+         plot(train_sizes * nrow(train), train_auc,
+                     type = "l", col = "#E84855", ylim = c(0.5, 1.0),
+                     xlab = "Training Size", ylab = "AUC-ROC",
+                     main = "Learning Curves")
+       lines(train_sizes *nrow(train), val_auc, col = "#2E86AB")
+       legend("bottomright", legend = c("Train", "Validation"),
+                       col = c("#E84855", "#2E86AB"), lty = 1)
+       
